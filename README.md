@@ -1,77 +1,350 @@
-# Stock Prediction Pipeline
+<a id="top"></a>
+<div align="center">
 
-A real-time stock prediction pipeline using Kafka, Spark, Cassandra, and HDFS with ML-based predictions.
+# `❯ Stock Prediction Pipeline`
 
-## 🏗️ Architecture Overview
+Real-time stock prediction pipeline using **Kafka**, **Spark Structured Streaming**, **HDFS**, **Cassandra**, and a **Streamlit** dashboard – fully containerized with **Docker Compose**, instrumented with **Prometheus + Grafana**, and backed by integration tests.
 
+<br />
+
+<em>Built with the tools and technologies:</em>
+
+<br />
+
+<img src="https://img.shields.io/badge/Python-3776AB.svg?style=flat&logo=Python&logoColor=white" alt="Python" />
+<img src="https://img.shields.io/badge/Apache%20Kafka-231F20.svg?style=flat&logo=Apache-Kafka&logoColor=white" alt="Kafka" />
+<img src="https://img.shields.io/badge/Apache%20Spark-E25A1C.svg?style=flat&logo=apachespark&logoColor=white" alt="Spark" />
+<img src="https://img.shields.io/badge/Apache%20Cassandra-1287B1.svg?style=flat&logo=apachecassandra&logoColor=white" alt="Cassandra" />
+<img src="https://img.shields.io/badge/HDFS-FFB000.svg?style=flat&logo=apache&logoColor=white" alt="HDFS" />
+<br />
+<img src="https://img.shields.io/badge/Streamlit-FF4B4B.svg?style=flat&logo=Streamlit&logoColor=white" alt="Streamlit" />
+<img src="https://img.shields.io/badge/Docker-2496ED.svg?style=flat&logo=Docker&logoColor=white" alt="Docker" />
+<img src="https://img.shields.io/badge/Prometheus-E6522C.svg?style=flat&logo=Prometheus&logoColor=white" alt="Prometheus" />
+<img src="https://img.shields.io/badge/Grafana-F46800.svg?style=flat&logo=Grafana&logoColor=white" alt="Grafana" />
+<img src="https://img.shields.io/badge/Bash-4EAA25.svg?style=flat&logo=GNU-Bash&logoColor=white" alt="Bash" />
+<img src="https://img.shields.io/badge/pandas-150458.svg?style=flat&logo=pandas&logoColor=white" alt="pandas" />
+<img src="https://img.shields.io/badge/NumPy-013243.svg?style=flat&logo=NumPy&logoColor=white" alt="NumPy" />
+
+</div>
+
+
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Architecture Overview](#architecture-overview)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Documentation Map](#documentation-map)
+- [Project Structure](#project-structure)
+- [Configuration](#configuration)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Quick Start (recommended)](#quick-start-recommended)
+  - [Manual Startup (advanced)](#manual-startup-advanced)
+- [Services & Ports](#services--ports)
+- [Testing](#testing)
+- [Troubleshooting](#troubleshooting)
+- [Roadmap & Next Steps](#roadmap--next-steps)
+- [Contributing](#contributing)
+- [License](#license)
+- [Acknowledgments](#acknowledgments)
+
+
+
+
+## Overview
+
+This project is a **real-time stock prediction pipeline** designed as a portfolio-grade example of:
+
+- **Streaming ETL** with Kafka + Spark Structured Streaming  
+- **Feature engineering** and **ML batch training** on Spark  
+- **Data lake + feature store-style storage** (HDFS + Cassandra)  
+- A simple **Streamlit dashboard** for visualization  
+- **Monitoring & observability** with Prometheus + Grafana  
+
+It is fully containerized with **Docker Compose** and comes with **operational scripts** and **documentation** so that other engineers can run, inspect, and extend it easily.
+
+
+
+## Architecture Overview
+
+```text
+Producer (Python)  →  Kafka  →  Spark Streaming  →  HDFS (raw ticks)
+                                          ↓
+                                 Cassandra (features)
+                                          ↓
+                                 Spark Batch (ML)
+                                          ↓
+                                Cassandra (predictions)
+                                          ↓
+                                Streamlit Dashboard
+````
+
+**High-level flow:**
+
+* A Python **producer** generates synthetic stock ticks and pushes them to **Kafka**.
+* **Spark Structured Streaming**:
+
+  * Consumes ticks from Kafka
+  * Writes **raw data to HDFS** (Parquet)
+  * Computes **technical indicators** (SMA-5, SMA-20) and writes **features to Cassandra**
+* A **Spark batch job** trains a **Random Forest** model and writes predictions back into Cassandra.
+* A **Streamlit** app visualizes predictions and features in near real-time.
+* **Prometheus + Grafana** monitor Spark and service metrics.
+
+
+
+## Features
+
+* 🔄 **End-to-end streaming pipeline**
+
+  * Kafka → Spark Structured Streaming → HDFS + Cassandra
+* 📈 **Technical indicators**
+
+  * SMA-5 & SMA-20 windows over recent ticks
+* 🤖 **ML Batch Training**
+
+  * Random Forest regression trained on historical features
+  * Metrics like RMSE / MAE / R² recorded (see `BATCH_SUCCESS.md`)
+* 📊 **Streamlit dashboard**
+
+  * Live view of predictions and features by symbol
+* 🧰 **Strong DevEx**
+
+  * `manage.sh` and helper scripts for one-command startup
+  * `.env.example` for configuration
+* 📡 **Observability**
+
+  * Prometheus scrape config + Grafana dashboard (`spark-overview.json`)
+* ✅ **Testing**
+
+  * Pytest-based integration tests under `tests/`
+* 📚 **Rich documentation**
+
+  * Separate docs for onboarding, integration, monitoring, and production-readiness
+
+
+
+## Tech Stack
+
+**Data & Compute**
+
+* Apache Kafka
+* Apache Spark (Structured Streaming + batch)
+* HDFS
+* Apache Cassandra
+
+**Application**
+
+* Python (producer, Spark jobs, tests)
+* Streamlit (dashboard)
+
+**Platform / Ops**
+
+* Docker & Docker Compose
+* Prometheus & Grafana
+* Bash scripts for orchestration
+
+
+
+## Documentation Map
+
+If you’re new to the repo, follow this reading path:
+
+1. **Overview & story**
+
+   * [`SUMMARY.md`](SUMMARY.md) – high-level project summary
+   * [`ROADMAP.md`](ROADMAP.md) – how the project is expected to evolve
+
+2. **First run**
+
+   * [`START_HERE.md`](START_HERE.md) – **main onboarding guide**
+   * [`GETTING_STARTED.md`](GETTING_STARTED.md) – environment + detailed setup
+   * [`QUICK_START_COMMANDS.txt`](QUICK_START_COMMANDS.txt) – all key commands in one place
+
+3. **Visual expectations**
+
+   * [`VISUAL_GUIDE.md`](VISUAL_GUIDE.md) – screenshots of dashboards and UIs
+   * [`BATCH_SUCCESS.md`](BATCH_SUCCESS.md) – example batch metrics and analysis
+
+4. **Integration & operations**
+
+   * [`INTEGRATION_GUIDE.md`](INTEGRATION_GUIDE.md) – how to integrate this pipeline into other systems
+   * [`MONITORING_ANALYSIS.md`](MONITORING_ANALYSIS.md) – Prometheus / Grafana + Spark metrics
+   * [`PRODUCTION_READY.md`](PRODUCTION_READY.md) – production-readiness checklist
+   * [`NEXT_STEPS.md`](NEXT_STEPS.md) – suggested improvements and extensions
+
+
+
+## Project Structure
+
+```text
+.
+├── README.md                    # You are here
+├── docker-compose.yml           # Service orchestration (Kafka, Spark, HDFS, Cassandra, Streamlit, monitoring)
+├── .env.example                 # Sample configuration (dev-friendly defaults)
+├── BATCH_SUCCESS.md             # Example batch metrics and analysis
+├── GETTING_STARTED.md           # Setup and first run (detailed)
+├── INTEGRATION_GUIDE.md         # Integration with other systems
+├── MONITORING_ANALYSIS.md       # Monitoring & metrics interpretation
+├── NEXT_STEPS.md                # Suggested improvements
+├── PRODUCTION_READY.md          # Production-readiness notes
+├── QUICK_START_COMMANDS.txt     # High-level command cheatsheet
+├── QUICK_TEST.sh                # Script to run tests / checks
+├── ROADMAP.md                   # Roadmap & evolution
+├── START_HERE.md                # Main onboarding entrypoint
+├── SUMMARY.md                   # High-level summary of the project
+├── VISUAL_GUIDE.md              # Screenshots and visual cues
+├── init/
+│   ├── cassandra-init.cql       # Keyspace + tables for features & predictions
+│   ├── hdfs-bootstrap.sh        # HDFS directory setup for raw + checkpoints
+│   └── kafka-create-topics.sh   # Kafka topic(s) (e.g. ticks)
+├── monitoring/
+│   ├── README.md
+│   ├── prometheus.yml           # Prometheus scrape configuration
+│   ├── spark-metrics.properties # Spark metrics → JMX bridge
+│   └── grafana/
+│       ├── dashboards/
+│       │   └── spark-overview.json
+│       └── provisioning/
+│           ├── dashboards/
+│           │   └── dashboards.yml
+│           └── datasources/
+│               └── prometheus.yml
+├── scripts/
+│   ├── docker-compose-wrapper.sh
+│   ├── manage.sh                # Main entrypoint for starting/stopping pipeline
+│   ├── reset-streaming.sh
+│   ├── start-batch.sh
+│   ├── start-pipeline.sh
+│   ├── start-streaming.sh
+│   └── stop-streaming.sh
+├── services/
+│   ├── producer/
+│   │   ├── Dockerfile
+│   │   ├── producer.py
+│   │   └── requirements.txt
+│   ├── spark/
+│   │   ├── Dockerfile
+│   │   ├── requirements.txt
+│   │   ├── submit.sh
+│   │   ├── jmx/
+│   │   │   ├── download-agent.sh
+│   │   │   └── jmx_spark.yaml
+│   │   └── jobs/
+│   │       ├── batch_train_predict.py
+│   │       ├── common.py
+│   │       └── streaming_ingest.py
+│   └── streamlit/
+│       ├── Dockerfile
+│       ├── app.py
+│       └── requirements.txt
+└── tests/
+    ├── conftest.py
+    ├── requirements.txt
+    └── test_pipeline.py
 ```
-Producer (Python) → Kafka → Spark Streaming → HDFS (raw data)
-                                          ↓
-                                    Spark Streaming → Cassandra (features)
-                                          ↓
-                                    Spark Batch ML → Cassandra (predictions)
-                                          ↓
-                                    Streamlit Dashboard
-```
 
-## 📋 Components
 
-1. **Producer**: Generates synthetic stock tick data and publishes to Kafka
-2. **Spark Streaming**: 
-   - Ingests data from Kafka
-   - Computes technical indicators (SMA-5, SMA-20)
-   - Writes raw data to HDFS (Parquet)
-   - Writes features to Cassandra
-3. **Spark Batch**: Trains Random Forest model and generates predictions
-4. **Streamlit Dashboard**: Visualizes predictions in real-time
-5. **Monitoring**: Prometheus + Grafana for metrics
+## Configuration
 
-## 🎯 Getting Started
+Configuration is driven via environment variables. A template is provided:
 
-**👉 START HERE:** [START_HERE.md](START_HERE.md) - **Complete step-by-step guide to run everything on your laptop!**
-
-**Quick Commands:**
 ```bash
-# 1. Start everything (ONE COMMAND!)
-./scripts/manage.sh start
-
-# 2. Open dashboard
-open http://localhost:8501
-
-# 3. Start streaming job (in new terminal)
-./scripts/manage.sh start-streaming
+cp .env.example .env
 ```
 
-**Other Guides:**
-- [GETTING_STARTED.md](GETTING_STARTED.md) - Detailed getting started
-- [VISUAL_GUIDE.md](VISUAL_GUIDE.md) - See what you'll see
-- [INTEGRATION_GUIDE.md](INTEGRATION_GUIDE.md) - Integrate with your systems
+Then edit `.env` as needed. Typical defaults:
 
-## 🚀 Quick Start
+```bash
+# Kafka
+KAFKA_BOOTSTRAP=kafka:9092
+TOPIC_IN=ticks
+
+# HDFS
+HDFS_URI=hdfs://namenode:8020
+RAW_DIR=/data/raw/ticks
+CHECKPOINT_DIR=/data/checkpoints/ingest
+
+# Cassandra
+CASSANDRA_HOST=cassandra
+CASSANDRA_PORT=9042
+KEYSPACE=market
+TABLE_FEATURES=features
+TABLE_PRED=predictions
+
+# Streaming windows (dev-friendly)
+WIN5_DURATION=15 seconds
+WIN5_SLIDE=5 seconds
+WIN20_DURATION=60 seconds
+WIN20_SLIDE=15 seconds
+WATERMARK=5 seconds
+STREAM_TRIGGER=5 seconds
+DRIVER_TRIGGER=20 seconds
+TIME_FILTER_MINUTES=10
+```
+
+> Note: `.env` and `.env.test` are **not** committed. Only `.env.example` lives in the repo.
+
+
+
+## Getting Started
 
 ### Prerequisites
-- Docker & Docker Compose
-- At least 8GB RAM available
 
-### Start the Pipeline
+* Docker & Docker Compose
+* At least **8 GB RAM** available
+* Linux / WSL2 / macOS recommended
+
+### Quick Start (recommended)
+
+From the repo root:
 
 ```bash
-# 1. Start all services
-docker-compose up -d
+# 0. Configure environment (one time)
+cp .env.example .env
 
-# 2. Wait for services to be healthy (especially Cassandra)
+# 1. Start all core services (Kafka, Spark, HDFS, Cassandra, Streamlit, monitoring, producer...)
+./scripts/manage.sh start
+
+# 2. Open the Streamlit dashboard
+# Linux:
+xdg-open http://localhost:8501 || true
+# macOS:
+open http://localhost:8501 || true
+
+# 3. Start Spark Streaming (new terminal)
+./scripts/manage.sh start-streaming
+
+# 4. After a few minutes of data, run the batch ML job (new terminal)
+./scripts/manage.sh start-batch
+```
+
+For a guided walkthrough, see:
+
+* [`START_HERE.md`](START_HERE.md)
+* [`GETTING_STARTED.md`](GETTING_STARTED.md)
+
+### Manual Startup (advanced)
+
+If you prefer full control:
+
+```bash
+# 1. Start the full stack
+docker-compose up -d
 docker-compose ps
 
-# 3. Initialize Kafka topics
+# 2. Initialize Kafka topics
 bash init/kafka-create-topics.sh
 
-# 4. Initialize HDFS directories
+# 3. Initialize HDFS directories
 bash init/hdfs-bootstrap.sh
 
-# 5. Initialize Cassandra schema
+# 4. Initialize Cassandra schema
 docker exec -i cassandra cqlsh < init/cassandra-init.cql
 
-# 6. Start Spark Streaming job
+# 5. Start Spark Streaming job
 docker exec -it spark-submit bash -c "cd /opt/spark/app && /opt/spark/bin/spark-submit \
   --master spark://spark-master:7077 \
   --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1,com.datastax.spark:spark-cassandra-connector_2.12:3.5.1 \
@@ -79,7 +352,7 @@ docker exec -it spark-submit bash -c "cd /opt/spark/app && /opt/spark/bin/spark-
   --conf spark.hadoop.fs.defaultFS=hdfs://namenode:8020 \
   streaming_ingest.py"
 
-# 7. (Optional) Run batch training job (wait for streaming to collect some data first)
+# 6. Run batch training job (after some data is collected)
 docker exec -it spark-submit bash -c "cd /opt/spark/app && /opt/spark/bin/spark-submit \
   --master spark://spark-master:7077 \
   --packages com.datastax.spark:spark-cassandra-connector_2.12:3.5.1 \
@@ -88,181 +361,185 @@ docker exec -it spark-submit bash -c "cd /opt/spark/app && /opt/spark/bin/spark-
   batch_train_predict.py"
 ```
 
-### Access Services
 
-- **Streamlit Dashboard**: http://localhost:8501
-- **Spark Master UI**: http://localhost:8080
-- **Spark Worker 1 UI**: http://localhost:8081
-- **Spark Worker 2 UI**: http://localhost:8082
-- **Prometheus**: http://localhost:9090
-- **Grafana**: http://localhost:3000 (default: admin/admin)
 
-## 📊 Project Analysis & Feedback
+## Services & Ports
 
-### ✅ Strengths
+| Service              | URL / Port                                     | Description                               |
+| -------------------- | ---------------------------------------------- | ----------------------------------------- |
+| Streamlit            | [http://localhost:8501](http://localhost:8501) | Predictions & features dashboard          |
+| Spark Master UI      | [http://localhost:8080](http://localhost:8080) | Spark cluster overview                    |
+| Spark Worker 1 UI    | [http://localhost:8081](http://localhost:8081) | Worker 1                                  |
+| Spark Worker 2 UI    | [http://localhost:8082](http://localhost:8082) | Worker 2                                  |
+| Prometheus           | [http://localhost:9090](http://localhost:9090) | Metrics scraping                          |
+| Grafana              | [http://localhost:3000](http://localhost:3000) | Dashboards (`admin` / `admin` by default) |
+| Kafka (internal)     | `kafka:9092`                                   | Tick ingestion                            |
+| Cassandra (internal) | `cassandra:9042`                               | Features & predictions storage            |
 
-1. **Well-structured architecture**: Clear separation of concerns with microservices
-2. **Modern stack**: Uses industry-standard tools (Kafka, Spark, Cassandra)
-3. **Monitoring setup**: Prometheus + Grafana integration for observability
-4. **Containerization**: Fully containerized with Docker Compose
-5. **Testing infrastructure**: Includes pytest tests with fixtures
-6. **Idempotency handling**: Smart state management in streaming job
+See `MONITORING_ANALYSIS.md` for how Prometheus & Grafana are wired and how to interpret Spark metrics.
 
-### ⚠️ Issues Found & Fixed
 
-#### 1. **Timestamp Format Mismatch** (CRITICAL - FIXED)
-- **Problem**: Producer sends ISO8601 with 'Z' suffix, but streaming job expects different format
-- **Impact**: Timestamp parsing failures, data loss
-- **Fix**: Aligned timestamp formats between producer and streaming job
 
-#### 2. **Cassandra Schema Mismatch** (CRITICAL - FIXED)
-- **Problem**: Streaming job writes `bucket_start`, `bucket_end` but schema expects different columns
-- **Impact**: Write failures to Cassandra
-- **Fix**: Updated schema to match actual data structure
+## Testing
 
-#### 3. **Missing Job Automation** (HIGH - FIXED)
-- **Problem**: No automated way to start Spark jobs after services are up
-- **Impact**: Manual intervention required
-- **Fix**: Added startup scripts and improved documentation
+Tests are in `tests/` and focus on core behavior and metrics.
 
-#### 4. **Path Inconsistencies** (MEDIUM - FIXED)
-- **Problem**: Volume mount paths don't match script expectations
-- **Impact**: Jobs can't find Python files
-- **Fix**: Standardized paths in docker-compose.yml
+You can run them manually or via the helper script.
 
-#### 5. **Missing Dependencies** (MEDIUM - FIXED)
-- **Problem**: Some Python packages missing from requirements.txt
-- **Impact**: Runtime errors
-- **Fix**: Added all required dependencies
-
-#### 6. **Error Handling** (LOW - IMPROVED)
-- **Problem**: Limited error handling in some components
-- **Impact**: Silent failures
-- **Fix**: Added better error handling and logging
-
-### 🔧 Improvements Made
-
-1. ✅ Fixed timestamp format consistency
-2. ✅ Updated Cassandra schema to match code
-3. ✅ Added comprehensive README
-4. ✅ Fixed volume mount paths
-5. ✅ Added missing Python dependencies
-6. ✅ Improved error handling in producer
-7. ✅ Added .env.example for configuration
-8. ✅ Fixed Streamlit app to handle missing data
-
-### 📝 Recommendations for Further Improvement
-
-#### High Priority
-1. **Automate Spark Job Submission**: 
-   - Use a job scheduler (e.g., Airflow, Prefect) or init container
-   - Or add a startup script that waits for services and auto-starts jobs
-
-2. **Add Health Checks**:
-   - Implement health endpoints for all services
-   - Add readiness probes in docker-compose
-
-3. **Improve Data Validation**:
-   - Add schema validation in producer
-   - Validate data before writing to Kafka
-
-4. **Add Retry Logic**:
-   - Implement exponential backoff for Kafka/Cassandra connections
-   - Add circuit breakers for external dependencies
-
-#### Medium Priority
-5. **Model Versioning**:
-   - Store model artifacts in HDFS or S3
-   - Track model versions and performance metrics
-
-6. **Feature Store**:
-   - Consider using a dedicated feature store (Feast, Tecton)
-   - Better feature versioning and serving
-
-7. **Streaming ML**:
-   - Implement online learning for model updates
-   - Real-time prediction serving
-
-8. **Testing**:
-   - Add integration tests
-   - Add end-to-end pipeline tests
-   - Mock external services in unit tests
-
-#### Low Priority
-9. **Documentation**:
-   - Add API documentation
-   - Add architecture diagrams
-   - Document configuration options
-
-10. **Security**:
-    - Add authentication/authorization
-    - Encrypt data in transit
-    - Secure API endpoints
-
-11. **Performance**:
-    - Tune Spark configurations for your workload
-    - Optimize Cassandra table design
-    - Add caching layers
-
-12. **Observability**:
-    - Add distributed tracing (Jaeger, Zipkin)
-    - Add structured logging
-    - Create Grafana dashboards
-
-## 🧪 Testing
+### Option 1 – Manual
 
 ```bash
-# Install test dependencies
-cd tests
-pip install -r requirements.txt
+cd /path/to/stock-prediction-pipeline
 
-# Create .env.test file (see .env.example)
-# Run tests
-pytest test_pipeline.py -v
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Use a dedicated env file derived from .env.example
+cp .env.example .env.test  # adjust values as needed
+
+set -a
+source .env.test
+set +a
+
+pip install -r tests/requirements.txt
+
+pytest tests/test_pipeline.py -v
 ```
 
-## 📁 Project Structure
+### Option 2 – Quick test script
 
-```
-.
-├── docker-compose.yml          # Service orchestration
-├── init/                       # Initialization scripts
-│   ├── cassandra-init.cql     # Cassandra schema
-│   ├── kafka-create-topics.sh # Kafka topic creation
-│   └── hdfs-bootstrap.sh      # HDFS directory setup
-├── services/
-│   ├── producer/              # Kafka producer service
-│   ├── spark/                 # Spark jobs and Dockerfile
-│   └── streamlit/             # Dashboard service
-├── monitoring/                # Prometheus config
-└── tests/                     # Integration tests
+```bash
+# From repo root
+bash QUICK_TEST.sh
 ```
 
-## 🔍 Troubleshooting
+Check `BATCH_SUCCESS.md` for an example of expected ML metrics (RMSE / MAE / R²) for the batch job.
+
+
+
+## Troubleshooting
 
 ### Spark job fails to start
-- Check Spark master is running: `docker logs spark-master`
-- Verify workers are connected: http://localhost:8080
-- Check job logs: `docker logs spark-submit`
+
+* Check Spark Master logs:
+
+  ```bash
+  docker logs spark-master
+  ```
+
+* Verify workers in UI: [http://localhost:8080](http://localhost:8080)
+
+* Check Spark submit container:
+
+  ```bash
+  docker logs spark-submit
+  ```
 
 ### No data in Cassandra
-- Verify streaming job is running
-- Check Kafka topic has messages: `docker exec -it kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic ticks`
-- Check Spark streaming logs for errors
+
+* Confirm the streaming job is running and not erroring.
+
+* Inspect Kafka:
+
+  ```bash
+  docker exec -it kafka kafka-console-consumer \
+    --bootstrap-server localhost:9092 \
+    --topic ticks \
+    --from-beginning
+  ```
+
+* Inspect Cassandra:
+
+  ```bash
+  docker exec -it cassandra cqlsh -e "SELECT COUNT(*) FROM market.features;"
+  docker exec -it cassandra cqlsh -e "SELECT COUNT(*) FROM market.predictions;"
+  ```
 
 ### Streamlit shows no data
-- Verify predictions table exists: `docker exec -it cassandra cqlsh -e "SELECT * FROM market.predictions LIMIT 10;"`
-- Run batch training job to generate predictions
-- Check Streamlit logs: `docker logs streamlit`
 
-## 📚 Resources
+* Check that `market.predictions` has rows:
 
-- [Apache Spark Documentation](https://spark.apache.org/docs/latest/)
-- [Kafka Documentation](https://kafka.apache.org/documentation/)
-- [Cassandra Documentation](https://cassandra.apache.org/doc/latest/)
-- [Streamlit Documentation](https://docs.streamlit.io/)
+  ```bash
+  docker exec -it cassandra cqlsh -e "SELECT * FROM market.predictions LIMIT 10;"
+  ```
 
-## 📄 License
+* Check Streamlit logs:
 
-MIT
+  ```bash
+  docker logs streamlit
+  ```
 
+For deeper scenarios, refer to:
+
+* [`START_HERE.md`](START_HERE.md)
+* [`GETTING_STARTED.md`](GETTING_STARTED.md)
+* [`MONITORING_ANALYSIS.md`](MONITORING_ANALYSIS.md)
+
+
+
+## Roadmap & Next Steps
+
+High-level planning and future improvements are tracked in:
+
+* [`ROADMAP.md`](ROADMAP.md) – long-term evolution
+* [`NEXT_STEPS.md`](NEXT_STEPS.md) – prioritized improvements and ideas
+* [`PRODUCTION_READY.md`](PRODUCTION_READY.md) – hardening & productionization checklist
+
+These documents cover topics such as:
+
+* Automating Spark job submission (Airflow / Prefect / init containers)
+* Health checks & readiness probes
+* Advanced data validation and retries
+* Model versioning and potential feature store integration
+* Better security, performance tuning, and observability
+
+
+
+## Contributing
+
+Contributions, feedback, and ideas are welcome.
+
+1. **Fork** the repository
+
+2. **Create a feature branch**:
+
+   ```bash
+   git checkout -b feature/my-improvement
+   ```
+
+3. **Commit** your changes:
+
+   ```bash
+   git commit -m "Improve X / Fix Y"
+   ```
+
+4. **Push** your branch:
+
+   ```bash
+   git push origin feature/my-improvement
+   ```
+
+5. **Open a Pull Request** with a clear description and context
+
+
+
+## License
+
+This project is licensed under the **MIT License**.
+See the [`LICENSE`](LICENSE) file (or add one) for details.
+
+
+
+## Acknowledgments
+
+* Apache Kafka, Spark, Cassandra, HDFS, Streamlit, Prometheus, Grafana
+* The broader open-source community for the ecosystem around these tools
+  
+<div align="right">
+  <a href="#top">
+    <img src="https://img.shields.io/badge/-BACK_TO_TOP-151515?style=flat-square" alt="Back to top" />
+  </a>
+</div>
+
+
+[back-to-top]: https://img.shields.io/badge/-BACK_TO_TOP-151515?style=flat-square
