@@ -1,0 +1,5 @@
+pytest
+kafka-python
+cassandra-driver
+requests
+python-dotenv

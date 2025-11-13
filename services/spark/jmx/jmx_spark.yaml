@@ -1,0 +1,35 @@
+startDelaySeconds: 0
+ssl: false
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+
+rules:
+  # Heap & Non-heap memory (1 capture group => use $1)
+  - pattern: 'java.lang<type=Memory><>(HeapMemoryUsage|NonHeapMemoryUsage)'
+    name: jvm_memory_bytes_used
+    type: GAUGE
+    attr:
+      used: value
+    labels:
+      area: "$1"
+
+  # OS metrics (1 capture group => use $1)
+  - pattern: 'java.lang<type=OperatingSystem><>(ProcessCpuLoad|SystemCpuLoad|AvailableProcessors)'
+    name: jvm_os_$1
+    type: GAUGE
+
+  # Spark streaming metrics (2 capture groups => $1 and $2 are valid)
+  # e.g. org.apache.spark<type=StreamingMetrics,name=processedRowsPerSecond><>Value
+  - pattern: 'org.apache.spark<type=StreamingMetrics,name=(.+)><>(.+)'
+    name: spark_streaming_$1
+    type: GAUGE
+    labels:
+      attr: "$2"
+    attrNameSnakeCase: true
+
+  # GC counters (2 capture groups)
+  - pattern: 'java.lang<type=GarbageCollector,name=(.+)><>(CollectionTime|CollectionCount)'
+    name: jvm_gc_$2
+    type: COUNTER
+    labels:
+      gc: "$1"

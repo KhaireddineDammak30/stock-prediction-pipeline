@@ -1,0 +1,55 @@
+{
+  "dashboard": {
+    "title": "Spark Cluster Overview",
+    "tags": ["spark", "cluster"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "JVM Memory Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "jvm_memory_bytes_used{area=\"HeapMemoryUsage\"}",
+            "legendFormat": "{{instance}} - Heap"
+          },
+          {
+            "expr": "jvm_memory_bytes_used{area=\"NonHeapMemoryUsage\"}",
+            "legendFormat": "{{instance}} - Non-Heap"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "CPU Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "jvm_os_ProcessCpuLoad",
+            "legendFormat": "{{instance}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Spark Streaming Metrics",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "spark_streaming_processedRowsPerSecond",
+            "legendFormat": "{{instance}} - Rows/sec"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8}
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "10s"
+  }
+}
+

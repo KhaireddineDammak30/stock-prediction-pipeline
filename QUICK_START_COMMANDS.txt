@@ -1,0 +1,60 @@
+# ============================================
+# QUICK START COMMANDS - Copy & Paste
+# ============================================
+
+# 1. Navigate to project
+cd /home/khaireddine/projects/stock-prediction-pipeline
+
+# 2. Make scripts executable (first time only)
+chmod +x scripts/*.sh QUICK_TEST.sh
+
+# 3. Start everything
+./scripts/manage.sh start
+
+# 4. Check status
+./scripts/manage.sh status
+
+# 5. Start streaming job (in new terminal)
+./scripts/manage.sh start-streaming
+
+# 6. Start batch job (after 5-10 min, in new terminal)
+./scripts/manage.sh start-batch
+
+# 7. Open dashboard in browser
+# http://localhost:8501
+
+# ============================================
+# VIEWING YOUR PIPELINE
+# ============================================
+
+# Main Dashboard
+open http://localhost:8501
+
+# Spark UI
+open http://localhost:8080
+
+# Prometheus
+open http://localhost:9090
+
+# Grafana
+open http://localhost:3000
+# Login: admin/admin
+
+# ============================================
+# USEFUL COMMANDS
+# ============================================
+
+# View logs
+./scripts/manage.sh logs producer
+./scripts/manage.sh logs spark-submit
+
+# Check health
+./QUICK_TEST.sh
+
+# Stop everything
+./scripts/manage.sh stop
+
+# Restart
+./scripts/manage.sh restart
+
+# ============================================

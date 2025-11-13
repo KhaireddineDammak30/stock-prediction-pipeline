@@ -1,0 +1,249 @@
+services:
+  zookeeper:
+    image: zookeeper:3.9
+    container_name: zookeeper
+    restart: always
+    ports: ["2181:2181"]
+    networks: [bigdata_net]
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka
+    restart: always
+    depends_on: [zookeeper]
+    ports:
+      - "9092:9092"   # internal listener (containers)
+      - "29092:29092" # host listener (your pytest)
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      # TWO LISTENERS (bind)
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092
+
+      # WHAT CLIENTS SEE (advertise)
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+
+      # Map names to protocol
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+
+      # Inter-broker uses the internal listener
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+
+      # Keep your other settings
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_LOG_RETENTION_HOURS: 12
+      KAFKA_MESSAGE_MAX_BYTES: 2000000
+    networks: [bigdata_net]
+
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: namenode
+    restart: always
+    environment:
+      CLUSTER_NAME: localhadoop
+    ports: ["9870:9870"]
+    volumes: [hdfs_namenode:/hadoop/dfs]
+    networks: [bigdata_net]
+
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode
+    restart: always
+    environment:
+      CLUSTER_NAME: localhadoop
+      CORE_CONF_fs_defaultFS: hdfs://namenode:8020
+    depends_on: [namenode]
+    ports: ["9864:9864"]
+    volumes: [hdfs_datanode:/hadoop/dfs]
+    networks: [bigdata_net]
+
+  cassandra:
+    image: cassandra:4.1
+    container_name: cassandra
+    restart: always
+    ports: ["9042:9042"]
+    volumes: [cassandra_data:/var/lib/cassandra]
+    networks: [bigdata_net]
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'DESCRIBE KEYSPACES' localhost 9042 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  # Spark (built from ./services/spark with JMX agent baked in)
+  spark-master:
+    build: ./services/spark
+    container_name: spark-master
+    restart: always
+    environment:
+      - SPARK_NO_DAEMONIZE=true
+      # JMX Exporter on the master JVM (port 8090)
+      - SPARK_DAEMON_JAVA_OPTS=-javaagent:/opt/jmx_prometheus_javaagent.jar=8090:/opt/jmx/jmx_spark.yaml
+    volumes:
+      - ./services/spark/jobs:/opt/spark/app
+    ports:
+      - "7077:7077"
+      - "8080:8080"
+      - "8090:8090"   # master metrics (host-side curl)
+    command: >
+      bash -lc "
+      /opt/spark/sbin/start-master.sh &&
+      tail -F /opt/spark/logs/*"
+    networks: [bigdata_net]
+    depends_on:
+      cassandra:
+        condition: service_healthy
+
+  spark-worker-1:
+    build: ./services/spark
+    container_name: spark-worker-1
+    restart: always
+    environment:
+      - SPARK_NO_DAEMONIZE=true
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=2G
+      - SPARK_WORKER_WEBUI_PORT=8081
+      # JMX Exporter on worker JVM (port 8091)
+      - SPARK_DAEMON_JAVA_OPTS=-javaagent:/opt/jmx_prometheus_javaagent.jar=8091:/opt/jmx/jmx_spark.yaml
+    volumes:
+      - ./services/spark/jobs:/opt/spark/app
+    depends_on:
+      spark-master:
+        condition: service_started
+      cassandra:
+        condition: service_healthy
+    ports: ["8081:8081"]
+    command: >
+      bash -lc "
+      /opt/spark/sbin/start-worker.sh spark://spark-master:7077 &&
+      tail -F /opt/spark/logs/*"
+    networks: [bigdata_net]
+
+  spark-worker-2:
+    build: ./services/spark
+    container_name: spark-worker-2
+    restart: always
+    environment:
+      - SPARK_NO_DAEMONIZE=true
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=2G
+      - SPARK_WORKER_WEBUI_PORT=8082
+      # JMX Exporter on worker JVM (port 8091)
+      - SPARK_DAEMON_JAVA_OPTS=-javaagent:/opt/jmx_prometheus_javaagent.jar=8091:/opt/jmx/jmx_spark.yaml
+    volumes:
+      - ./services/spark/jobs:/opt/spark/app
+    depends_on:
+      spark-master:
+        condition: service_started
+      cassandra:
+        condition: service_healthy
+    ports: ["8082:8082"]
+    command: >
+      bash -lc "
+      /opt/spark/sbin/start-worker.sh spark://spark-master:7077 &&
+      tail -F /opt/spark/logs/*"
+    networks: [bigdata_net]
+
+  producer:
+    build: ./services/producer
+    container_name: producer
+    restart: always
+    depends_on: [kafka]
+    environment:
+      KAFKA_BROKER: kafka:9092
+      TOPIC: ticks
+      SYMBOLS: AAPL,MSFT,GOOGL
+      INTERVAL_SEC: 5
+    networks: [bigdata_net]
+
+  streamlit:
+    build: ./services/streamlit
+    container_name: streamlit
+    restart: always
+    depends_on:
+      cassandra:
+        condition: service_healthy
+    environment:
+      CASSANDRA_HOST: cassandra
+      CASSANDRA_KEYSPACE: market
+      CASSANDRA_TABLE_PRED: predictions
+    ports: ["8501:8501"]
+    networks: [bigdata_net]
+
+  spark-submit:
+    build: ./services/spark
+    container_name: spark-submit
+    restart: always
+    depends_on:
+      spark-master:
+        condition: service_started
+      kafka:
+        condition: service_started
+      cassandra:
+        condition: service_healthy
+      namenode:
+        condition: service_started
+      datanode:
+        condition: service_started
+    environment:
+      SPARK_MASTER: spark://spark-master:7077
+      KAFKA_BOOTSTRAP: kafka:9092
+      CASSANDRA_HOST: cassandra
+      HDFS_URI: hdfs://namenode:8020
+      TOPIC_IN: ticks
+      CHECKPOINT_DIR: /data/checkpoints/ingest
+      RAW_DIR: /data/raw/ticks
+      KEYSPACE: market
+      TABLE_FEATURES: features
+      TABLE_PRED: predictions
+      # JMX Exporter for the driver (when a job runs)
+      SPARK_DRIVER_EXTRA_JAVA_OPTIONS: -javaagent:/opt/jmx_prometheus_javaagent.jar=8092:/opt/jmx/jmx_spark.yaml
+    volumes:
+      - ./services/spark/jobs:/opt/spark/app
+    ports: ["4040:4040"]
+    command: ["bash", "-lc", "sleep infinity"]
+    networks: [bigdata_net]
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command: ['--config.file=/etc/prometheus/prometheus.yml']
+    ports: ["9090:9090"]
+    networks: [bigdata_net]
+    depends_on:
+      - spark-master
+      - spark-worker-1
+      - spark-worker-2
+      - spark-submit
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  grafana:
+    image: grafana/grafana-oss:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports: ["3000:3000"]
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+    networks: [bigdata_net]
+    depends_on: [prometheus]
+
+networks:
+  bigdata_net: {}
+
+volumes:
+  hdfs_namenode: {}
+  hdfs_datanode: {}
+  cassandra_data: {}
+  grafana_data: {}
